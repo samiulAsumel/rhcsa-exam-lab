@@ -9,7 +9,7 @@
 #           --count N   Number of questions (default 15)
 # Duration: 2.5 hours (150 minutes) — matching real RHCSA exam
 #===============================================================================
-set -euo pipefail
+set -uo pipefail
 
 RED='\033[0;31m'
 GREEN='\033[0;32m'
@@ -250,28 +250,34 @@ The change should persist across reboots.|check_grubby|15"
 )
 
 # ==========================================================================
-# RANDOM SELECTION
+# FISHER-YATES SHUFFLE & RANDOM SELECTION
 # ==========================================================================
-select_random_questions() {
+shuffle_and_select() {
 	local count=$1
 	local total=${#QUESTION_POOL[@]}
-	local -a selected=()
 	local -a indices=()
 
-	# Generate unique random indices
-	while [[ ${#indices[@]} -lt $count && ${#indices[@]} -lt $total ]]; do
-		local idx=$((RANDOM % total))
-		local duplicate=false
-		for existing in "${indices[@]}"; do
-			[[ "$existing" == "$idx" ]] && duplicate=true && break
-		done
-		if ! $duplicate; then
-			indices+=("$idx")
-			selected+=("${QUESTION_POOL[$idx]}")
-		fi
+	# Build index list
+	for ((i = 0; i < total; i++)); do
+		indices+=("$i")
 	done
 
-	printf '%s\n' "${selected[@]}"
+	# Fisher-Yates shuffle
+	for ((i = total - 1; i > 0; i--)); do
+		local j=$((RANDOM % (i + 1)))
+		local tmp=${indices[$i]}
+		indices[$i]=${indices[$j]}
+		indices[$j]=$tmp
+	done
+
+	# Pick first N
+	if [[ $count -gt $total ]]; then
+		count=$total
+	fi
+	SELECTED=()
+	for ((i = 0; i < count; i++)); do
+		SELECTED+=("${QUESTION_POOL[${indices[$i]}]}")
+	done
 }
 
 # ==========================================================================
@@ -683,12 +689,11 @@ cat <<'BANNER'
 BANNER
 echo -e "${NC}"
 
-# Select random questions
+# Select random questions (no process substitution — avoids set -e failures)
 log "Selecting ${QUESTION_COUNT} random questions from pool of ${#QUESTION_POOL[@]}..."
 SELECTED=()
-while IFS= read -r q; do
-	SELECTED+=("$q")
-done < <(select_random_questions "$QUESTION_COUNT")
+shuffle_and_select "$QUESTION_COUNT"
+log "Selected ${#SELECTED[@]} questions"
 
 # Save exam file for scoring
 >"$EXAM_FILE"
