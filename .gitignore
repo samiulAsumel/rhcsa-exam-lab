@@ -1,0 +1,30 @@
+# Ignore log files
+*.log
+
+# Ignore backup files
+*.bak
+*.bak.*
+*~
+
+# Ignore temporary files
+*.tmp
+*.swp
+*.swo
+
+# Ignore practice artifacts
+/practice/lvm/*.img
+/practice/chroot-test/
+
+# Ignore system files
+.DS_Store
+Thumbs.db
+
+# Editor files
+.vscode/
+.idea/
+*.sublime-*
+
+# OS generated
+._*
+.Spotlight-V100
+.Trashes
